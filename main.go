@@ -1,25 +1,40 @@
 package main
 
 import (
-	"fmt"
+	"log"
+	"os"
 
 	"github.com/emersion/go-imap/v2/imapclient"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	
-	opts := &imapclient.Options{
-		Username: "[EMAIL_ADDRESS]",
-		Password: "[PASSWORD]",
-		TLS:      imapclient.TLSAuto,
-	}
-
-	client, err := imapclient.DialWithTLS("imap.gmail.com:993", opts)
+	err := godotenv.Load()
 	if err != nil {
 		panic(err)
 	}
 
-	defer client.Close()
+	host := os.Getenv("IMAP_HOST")
+	user := os.Getenv("IMAP_USER")
+	pass := os.Getenv("IMAP_PASS")
 
-	fmt.Println("Connected to server!")
+	c, err := imapclient.DialTLS(host, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer c.Close()
+
+	if err := c.Login(user, pass).Wait(); err != nil {
+		log.Fatal(err)
+	}
+
+	mbox, err := c.Select("INBOX", nil).Wait()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("There are %d messages in the inbox", mbox.NumMessages)
+
+	c.Logout().Wait()
 }
